@@ -229,14 +229,27 @@ export class SpyglassMode {
     this.baseMap.on('move', () => syncMaps(this.baseMap, this.overlayMap));
 
     // マウス追従
-    this.container.addEventListener('mousemove', (e) => this.onMouseMove(e));
-    this.container.addEventListener('mouseleave', () => this.onMouseLeave());
+    this.container.addEventListener('mousemove', (e) => this.onMove(e.clientX, e.clientY));
+    this.container.addEventListener('mouseleave', () => this.onLeave());
+
+    // タッチ対応
+    this.container.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      this.onMove(touch.clientX, touch.clientY);
+    }, { passive: false });
+    this.container.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      this.onMove(touch.clientX, touch.clientY);
+    }, { passive: false });
+    this.container.addEventListener('touchend', () => this.onLeave());
   }
 
-  onMouseMove(e) {
+  onMove(clientX, clientY) {
     const rect = this.container.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
 
     this.circle.style.display = 'block';
     this.circle.style.width = this.radius * 2 + 'px';
@@ -250,7 +263,7 @@ export class SpyglassMode {
     }
   }
 
-  onMouseLeave() {
+  onLeave() {
     this.circle.style.display = 'none';
     const canvas = this.container.querySelector('.spyglass-overlay canvas.maplibregl-canvas');
     if (canvas) {
