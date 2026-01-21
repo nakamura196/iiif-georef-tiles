@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IIIF Georef Tiles - 地図比較ビューア</title>
+  <meta name="description" content="IIIF Georeference Extensionを使用した歴史地図と現代地図の比較ビューア">
+
+  <!-- OGP -->
+  <meta property="og:title" content="IIIF Georef Tiles">
+  <meta property="og:description" content="IIIF Georeference Extensionを使用した歴史地図と現代地図の比較ビューア。透過、スワイプ、左右分割、スパイグラスの4つのモードで比較できます。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://nakamura196.github.io/iiif-georef-tiles/">
+  <meta property="og:image" content="https://nakamura196.github.io/iiif-georef-tiles/ogp.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="ja_JP">
+  <meta property="og:site_name" content="IIIF Georef Tiles">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="IIIF Georef Tiles">
+  <meta name="twitter:description" content="IIIF Georeference Extensionを使用した歴史地図と現代地図の比較ビューア">
+  <meta name="twitter:image" content="https://nakamura196.github.io/iiif-georef-tiles/ogp.png">
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+  <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+
+    /* ===== ヘッダー ===== */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 50px;
+      background: #2c3e50;
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0 15px;
+      z-index: 1000;
+      gap: 15px;
+    }
+    .header h1 {
+      font-size: 15px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .mode-buttons {
+      display: flex;
+      gap: 4px;
+    }
+    .mode-btn {
+      padding: 6px 14px;
+      border: none;
+      background: #465a6c;
+      color: white;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+    .mode-btn:hover { background: #5a7a94; }
+    .mode-btn.active { background: #3498db; }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-left: auto;
+    }
+    .controls label {
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .controls input[type="range"] { width: 80px; }
+
+    /* ===== メインコンテナ ===== */
+    .main {
+      position: fixed;
+      top: 50px;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+
+    /* ===== モードコンテナ共通 ===== */
+    .mode-container {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+    }
+    .mode-container.active { display: block; }
+
+    /* ===== 透過モード ===== */
+    #opacity-container { width: 100%; height: 100%; }
+
+    /* ===== スワイプモード ===== */
+    #swipe-mode { position: relative; }
+    #swipe-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    .swipe-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #swipe-handle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #3498db;
+      cursor: ew-resize;
+      z-index: 100;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    #swipe-handle::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 30px;
+      height: 50px;
+      background: #3498db;
+      border-radius: 4px;
+    }
+    #swipe-handle::after {
+      content: '⋮';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .swipe-label {
+      position: absolute;
+      top: 60px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      z-index: 50;
+    }
+    .swipe-label-left { left: 10px; }
+    .swipe-label-right { right: 10px; }
+
+    /* ===== 左右分割モード ===== */
+    #split-mode { display: none; }
+    #split-mode.active { display: flex; }
+    .split-pane {
+      flex: 1;
+      height: 100%;
+      position: relative;
+    }
+    .split-pane:first-child { border-right: 2px solid #2c3e50; }
+    #split-left, #split-right { width: 100%; height: 100%; }
+    .split-label {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 6px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      z-index: 10;
+    }
+
+    /* ===== スパイグラスモード ===== */
+    #spyglass-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      cursor: crosshair;
+    }
+    .spyglass-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .spyglass-overlay { pointer-events: none; }
+    #spyglass-circle {
+      position: absolute;
+      border: 3px solid #3498db;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>東京帝國大學 鳥瞰図</h1>
+    <div class="mode-buttons">
+      <button class="mode-btn active" data-mode="opacity">透過</button>
+      <button class="mode-btn" data-mode="swipe">スワイプ</button>
+      <button class="mode-btn" data-mode="split">左右分割</button>
+      <button class="mode-btn" data-mode="spyglass">スパイグラス</button>
+    </div>
+    <div class="controls">
+      <label id="opacity-control">
+        透過度: <span id="opacity-value">70</span>%
+        <input type="range" id="opacity-slider" min="0" max="100" value="70">
+      </label>
+      <label id="radius-control" style="display:none;">
+        半径: <span id="radius-value">100</span>px
+        <input type="range" id="radius-slider" min="50" max="200" value="100">
+      </label>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- 透過モード -->
+    <div id="opacity-mode" class="mode-container active">
+      <div id="opacity-container"></div>
+    </div>
+
+    <!-- スワイプモード -->
+    <div id="swipe-mode" class="mode-container">
+      <div id="swipe-container"></div>
+      <div id="swipe-handle"></div>
+      <div class="swipe-label swipe-label-left">現代地図</div>
+      <div class="swipe-label swipe-label-right">鳥瞰図</div>
+    </div>
+
+    <!-- 左右分割モード -->
+    <div id="split-mode" class="mode-container">
+      <div class="split-pane">
+        <div id="split-left"></div>
+        <div class="split-label">現代地図</div>
+      </div>
+      <div class="split-pane">
+        <div id="split-right"></div>
+        <div class="split-label">鳥瞰図</div>
+      </div>
+    </div>
+
+    <!-- スパイグラスモード -->
+    <div id="spyglass-mode" class="mode-container">
+      <div id="spyglass-container"></div>
+      <div id="spyglass-circle"></div>
+    </div>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

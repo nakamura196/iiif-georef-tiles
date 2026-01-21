@@ -1,0 +1,26 @@
+# 作業用ディレクトリ
+work/
+
+# 中間ファイル（大きなTIFファイル等）
+*.tif
+*.jpg
+*.jpeg
+*.png
+!docs/**/*.png
+!docs/**/*.jpg
+
+# 既存の中間ファイル
+todai_source.jpg
+todai_with_gcp.tif
+todai_warped.tif
+todai_tiles/
+iiif_georef.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
