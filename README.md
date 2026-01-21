@@ -2,6 +2,9 @@
 
 IIIF Georeference Extension JSONからXYZタイルを生成し、MapLibre GL JSで表示するツール。
 
+- **リポジトリ**: https://github.com/nakamura196/iiif-georef-tiles
+- **GitHub Pages**: https://nakamura196.github.io/iiif-georef-tiles/
+
 ![Demo](docs/images/demo.png)
 
 ## 必要環境
